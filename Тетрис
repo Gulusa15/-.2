@@ -3,7 +3,7 @@ import random
 
 pygame.init()
 
-
+# Определение размеров блоков, ширины и высоты доски, координат экрана и цветов
 bw, bh = 20, 20
 board_w, board_h = 10, 20
 board_x, board_y = 70, 70
@@ -19,9 +19,9 @@ colors = {
     6: (0, 255, 255),
     7: (200, 150, 50)
 }
-
+# Определение форм блоков тетримино
 tetriminos = {
-    0: [],  
+    0: [],
     1: [(-1, 0), (0, 0), (1, 0), (2, 0)],  # I
     2: [(-1, 1), (-1, 0), (0, 0), (1, 0)],  # J
     3: [(1, 1), (-1, 0), (0, 0), (1, 0)],  # L
@@ -30,15 +30,16 @@ tetriminos = {
     6: [(-1, -1), (-1, 0), (0, 0), (1, 0)],  # T
     7: [(0, -1), (0, 0), (-1, 1), (1, 0)]  # Z
 }
-
+# Создание экрана
 screen = pygame.display.set_mode((screen_w, screen_h))
 pygame.display.set_caption("Тетрис")
-
+# Создание часов для управления скоростью игры
 clock = pygame.time.Clock()
-
+# Создание доски для игры
 board = [[0] * board_w for _ in range(board_h)]
 
 
+# Функция для получения случайного тетримино
 def get_tetrimino():
     return {
         "id": random.randint(1, 7),
@@ -47,16 +48,18 @@ def get_tetrimino():
     }
 
 
+# Функция для отрисовки доски
 def draw_board():
     for i in range(board_h):
         for j in range(board_w):
             pygame.draw.rect(screen, colors[board[i][j]], (board_x + j * bw + bw, board_y + i * bh + bh, bw, bh))
 
 
+# Функция для отрисовки тетримино
 def draw_tetrimino(tetrimino):
     for block in tetriminos[tetrimino["id"]]:
         x, y = block[0], block[1]
-        # Rotate the block using a rotation matrix
+        # Поворот блока с использованием матрицы поворота
         if tetrimino["rot"] == 1:
             x, y = -y, x
         elif tetrimino["rot"] == 2:
@@ -67,6 +70,7 @@ def draw_tetrimino(tetrimino):
         pygame.draw.rect(screen, colors[tetrimino["id"]], (board_x + x * bw + bw, board_y + y * bh + bh, bw, bh))
 
 
+# Функция для проверки столкновении
 def check_collision(tetrimino):
     for block in tetriminos[tetrimino["id"]]:
         x, y = block[0] + tetrimino["pos"][0], block[1] + tetrimino["pos"][1]
@@ -75,12 +79,14 @@ def check_collision(tetrimino):
     return False
 
 
+# Функция для добавления тетримино на доску
 def add_tetrimino(tetrimino):
     for block in tetriminos[tetrimino["id"]]:
         x, y = block[0] + tetrimino["pos"][0], block[1] + tetrimino["pos"][1]
         board[y][x] = tetrimino["id"]
 
 
+# Функция для удаления заполненных строк
 def remove_full_rows():
     full_rows = [i for i in range(board_h) if all(board[i])]
     if full_rows:
@@ -89,12 +95,41 @@ def remove_full_rows():
             board.insert(0, [0] * board_w)
 
 
+# Функция для перезапуска игры
+def restart_game():
+    global board, tetrimino, game_over
+    board = [[0] * board_w for _ in range(board_h)]
+    tetrimino = get_tetrimino()
+    game_over = False
+    pygame.mixer.music.pause()  # Поставить музыку на паузу
+
+
+# Функция для отрисовки кнопки перезапуска
+def draw_restart_button():
+    font = pygame.font.SysFont(None, 30)
+    text = font.render("Restart", True, colors[7])
+    rect = text.get_rect()
+    rect.center = (screen_w // 2, screen_h - 30)
+    pygame.draw.rect(screen, colors[0], rect, 2)
+    screen.blit(text, rect)
+
+
+# Основная функция игры
 def main():
     tetrimino = get_tetrimino()
     game_over = False
-    start_circle_enabled = True
     paused = False
     prev_tetrimino = None
+    # Загрузка музыкальных файлов
+    pygame.mixer.music.load('game.mp3')
+    # Воспроизведение музыки
+    pygame.mixer.music.play(-1)
+
+    # Определение переменной rect для кнопки Restart
+    font = pygame.font.SysFont(None, 30)
+    text = font.render("Restart", True, colors[7])
+    rect = text.get_rect()
+    rect.center = (screen_w // 2, screen_h - 30)
 
     while not game_over:
         for event in pygame.event.get():
@@ -108,20 +143,24 @@ def main():
                     temp = {"id": tetrimino["id"], "pos": tetrimino["pos"], "rot": new_rot}
                     if not check_collision(temp):
                         tetrimino["rot"] = new_rot
-                if event.key == pygame.K_RIGHT:
+                if event.key == pygame.K_RIGHT or event.key == pygame.K_d:
                     temp = {"id": tetrimino["id"], "pos": (tetrimino["pos"][0] + 1, tetrimino["pos"][1]),
                             "rot": tetrimino["rot"]}
                     if not check_collision(temp):
                         tetrimino["pos"] = (tetrimino["pos"][0] + 1, tetrimino["pos"][1])
-                elif event.key == pygame.K_LEFT:
+                elif event.key == pygame.K_LEFT or event.key == pygame.K_a:
                     temp = {"id": tetrimino["id"], "pos": (tetrimino["pos"][0] - 1, tetrimino["pos"][1]),
                             "rot": tetrimino["rot"]}
                     if not check_collision(temp):
                         tetrimino["pos"] = (tetrimino["pos"][0] - 1, tetrimino["pos"][1])
                 elif event.key == pygame.K_LSHIFT or event.key == pygame.K_RSHIFT:
-                    # Pause or resume the game
+                    if paused:
+                        pygame.mixer.music.unpause()  # Возобновить музыку
+                    else:
+                        pygame.mixer.music.pause()  # Поставить музыку на паузу
+                    # Пауза или возобновление игры
                     paused = not paused
-                elif event.key == pygame.K_DOWN:
+                elif event.key == pygame.K_DOWN or event.key == pygame.K_s:
                     temp = {"id": tetrimino["id"], "pos": (tetrimino["pos"][0], tetrimino["pos"][1] + 1),
                             "rot": tetrimino["rot"]}
                     while not check_collision(temp):
@@ -133,6 +172,10 @@ def main():
                     tetrimino = get_tetrimino()
                     if check_collision(tetrimino):
                         game_over = True
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                if rect.collidepoint(event.pos):
+                    restart_game()
+                    pygame.mixer.music.play(-1)
 
         if paused:
             continue
@@ -140,7 +183,7 @@ def main():
         temp = {"id": tetrimino["id"], "pos": (tetrimino["pos"][0], tetrimino["pos"][1] + 1), "rot": tetrimino["rot"]}
 
         if check_collision(temp):
-            tetrimino = prev_tetrimino  # Update the position to the previous position
+            tetrimino = prev_tetrimino  
             add_tetrimino(tetrimino)
             remove_full_rows()
             tetrimino = get_tetrimino()
@@ -148,20 +191,28 @@ def main():
                 game_over = True
         else:
             tetrimino = temp
-            prev_tetrimino = tetrimino  
+            prev_tetrimino = tetrimino
 
         screen.fill((255, 255, 255))
         draw_board()
         draw_tetrimino(tetrimino)
+        draw_restart_button()
         pygame.display.flip()
 
         clock.tick(3)
 
+    # Генерация 1000 случайных кругов на экране
     for i in range(1000):
         x = random.randint(board_x, board_x + board_w * bw)
         y = random.randint(board_y, board_y + board_h * bh)
         pygame.draw.circle(screen, colors[random.randint(1, 7)], (x, y), 2)
         pygame.display.flip()
+
+    # Музыка после проигрыша
+    pygame.mixer.music.stop()
+    pygame.mixer.music.load('game-over.mp3')
+    pygame.mixer.music.play()
+    pygame.time.wait(2000)  
 
     pygame.quit()
 
